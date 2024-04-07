@@ -1,4 +1,5 @@
-image: condaforge/mambaforge:23.11.0-0
+tasks:
+    - command: pip install pandas pysam numpy
 
 vscode:
     extensions:
