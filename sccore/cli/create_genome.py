@@ -1,20 +1,25 @@
+#!usr/bin/env python3
 """
 subset given chromsome from fasta and gtf
 """
+
+import argparse
 import pyfastx
 import os
 
-if __name__ == "__main__":
-    import argparse
+
+def main():
     parser = argparse.ArgumentParser()
     parser.add_argument("-g", "--gtf", required=True, help="gtf file")
     parser.add_argument("-f", "--fasta", required=True, help="fasta file")
-    parser.add_argument("-c", "--chrom", required=True, help="chromosome to extract. multple chrom are seperated by comma")
+    parser.add_argument(
+        "-c", "--chrom", required=True, help="chromosome to extract. multple chrom are seperated by comma"
+    )
     parser.add_argument("-o", "--species", required=True, help="use for output name")
     args = parser.parse_args()
 
     chrom = args.chrom.split(",")
-    prefix = '.'.join([args.species] + chrom)
+    prefix = ".".join([args.species] + chrom)
     chrom = set(chrom)
     fa = pyfastx.Fastx(args.fasta)
     outdir = prefix
@@ -22,7 +27,7 @@ if __name__ == "__main__":
         os.mkdir(outdir)
     out_fa = os.path.join(outdir, prefix + ".fasta")
     with open(out_fa, "w") as out:
-        for name,seq in fa:
+        for name, seq in fa:
             if name in chrom:
                 out.write(">{}\n{}\n".format(name, seq))
 
@@ -34,3 +39,5 @@ if __name__ == "__main__":
                 out.write(line)
 
 
+if __name__ == "__main__":
+    main()

@@ -1,0 +1,53 @@
+[build-system]
+requires = ["setuptools"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "sccore"
+version = "0.0.0"
+dependencies = [
+    "pysam",
+    "pandas>=2.0.0",
+
+]
+requires-python = ">=3.8"
+authors = [
+    {name = "Yiqi Zhou"},
+]
+description = "Single cell core functions"
+readme = "README.md"
+license = {file = "LICENSE"}
+keywords = ["bioinformatics", "single-cell"]
+classifiers = [
+    "Development Status :: 5 - Production/Stable",
+    "Environment :: Console",
+    "Environment :: Web Environment",
+    "Intended Audience :: Science/Research",
+    "License :: OSI Approved :: GNU General Public License v3 (GPLv3)",
+    "Natural Language :: English",
+    "Operating System :: MacOS :: MacOS X",
+    "Operating System :: POSIX",
+    "Operating System :: Unix",
+    "Programming Language :: Python",
+    "Topic :: Scientific/Engineering",
+    "Topic :: Scientific/Engineering :: Bio-Informatics",
+]
+
+[project.optional-dependencies]
+dev = [
+    "pre-commit",
+    "ruff",
+]
+
+[project.urls]
+Repository = "https://github.com/zhouyiqi91/sccore"
+
+[project.scripts]
+create-test-data = "sccore.cli.create_test_data:main"
+create-genome = "sccore.cli.create_genome:main"
+
+
+[tool.ruff]
+line-length = 120
+target-version = "py312"
+ignore-init-module-imports = true
