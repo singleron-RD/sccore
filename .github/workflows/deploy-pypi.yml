@@ -22,7 +22,9 @@ jobs:
           pip install .
 
       - name: Build the distribution
-        run: python setup.py sdist bdist_wheel
+        run: |
+          python3 -m build --sdist
+          python3 -m build --wheel
 
       - name: Publish to PyPI
         uses: pypa/gh-action-pypi-publish@release/v1
