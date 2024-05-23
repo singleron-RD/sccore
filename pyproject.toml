@@ -45,6 +45,7 @@ Repository = "https://github.com/zhouyiqi91/sccore"
 [project.scripts]
 create-test-data = "sccore.cli.create_test_data:main"
 create-genome = "sccore.cli.create_genome:main"
+manifest = "sccore.cli.manifest:main"
 
 
 [tool.ruff]
