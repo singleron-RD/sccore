@@ -10,7 +10,7 @@ dependencies = [
     "pandas>=2.0.0",
 
 ]
-requires-python = ">=3.8"
+requires-python = ">=3.9"
 authors = [
     {name = "Yiqi Zhou"},
 ]
@@ -46,6 +46,7 @@ Repository = "https://github.com/zhouyiqi91/sccore"
 create-test-data = "sccore.cli.create_test_data:main"
 create-genome = "sccore.cli.create_genome:main"
 manifest = "sccore.cli.manifest:main"
+format-bc = "sccore.cli.format_bc:main"
 
 
 [tool.ruff]

@@ -23,6 +23,13 @@ def read_one_col(fn):
         return [x.strip() for x in f]
 
 
+def write_one_col(a: list, fn):
+    """write list into one column file"""
+    with openfile(fn, "wt") as f:
+        f.write("\n".join(a))
+        f.write("\n")
+
+
 def fastq_str(name, seq, qual):
     """return fastq read string"""
     return f"@{name}\n{seq}\n+\n{qual}\n"
