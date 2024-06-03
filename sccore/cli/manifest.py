@@ -7,9 +7,11 @@ create a samplesheet.csv file.
 import argparse
 import os
 import csv
+import pathlib
 import pandas as pd
 
 from sccore import utils
+from sccore.__init__ import VERSION
 
 
 class SamplesheetGenerator:
@@ -49,10 +51,10 @@ class SamplesheetGenerator:
         Recursively search the specified folders for fastq files and (optionally) matched barcode files.
         """
         samples = set(self.manifest.values())
+        print("Searching...")
         for folder in self.folders:
             folder = os.path.abspath(folder)
             for root, _, files in os.walk(folder):
-                print(root, files)
                 for fn in files:
                     if not fn.endswith(".gz"):
                         continue
@@ -61,9 +63,11 @@ class SamplesheetGenerator:
                         sample = self.get_barcode(root, fn, samples)
                         if sample:
                             self.sample_barcode[sample] = abspath
+                            print("Found match_barcode file:", abspath)
                             continue
                     sample, prefix, pair = self.get_fastq(fn, self.manifest)
                     if sample:
+                        print("Found fastq file:", abspath)
                         self.sample_prefix_pair_fq[sample][prefix][pair].append(abspath)
                         self.max_pair = max(self.max_pair, pair)
                         self.n_fq += 1
@@ -75,10 +79,15 @@ class SamplesheetGenerator:
         """
         Return the sample name if the file is a matched barcode file.
         """
+
         if fn != "barcodes.tsv.gz":
             return None
+        path = pathlib.PurePath(root)
+        if path.name != "filtered":
+            return None
+        sample_dir = path.parent.name
         for sample in samples:
-            if sample in root:
+            if sample in sample_dir:
                 return sample
 
     def get_fastq(self, fn, manifest):
@@ -116,7 +125,7 @@ class SamplesheetGenerator:
     def run(self):
         print(f"Found {len(self.manifest)} samples in {self.manifest_file}")
         if self.match:
-            print("Also searching for matched barcode.tsv.gz files")
+            print("Also searching for filtered/barcode.tsv.gz files")
         self.find_files()
         self.write_samplesheet()
         print("Done")
@@ -135,6 +144,7 @@ def main():
         help="Comma-separated paths to folders to search for fastq files and optional matched_barcode files.",
     )
     parser.add_argument("-o", "--output", help="Output samplesheet file.", default="samplesheet.csv")
+    parser.add_argument("-v", "--version", action="version", version=f"{VERSION}")
 
     args = parser.parse_args()
     folders = args.folders.split(",")

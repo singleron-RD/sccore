@@ -7,6 +7,7 @@ import argparse
 import os
 
 from sccore import utils
+from sccore.__init__ import VERSION
 
 logger = utils.get_logger(__name__)
 
@@ -51,6 +52,7 @@ def main():
         required=True,
         help="Comma-separated paths to folders to search for barcodes.tsv.gz",
     )
+    parser.add_argument("-v", "--version", action="version", version=f"{VERSION}")
 
     args = parser.parse_args()
     folders = args.folders.split(",")

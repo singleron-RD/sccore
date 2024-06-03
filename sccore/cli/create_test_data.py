@@ -67,7 +67,7 @@ class CreateTestData:
             os.mkdir(self.dir_name)
         if self.match_barcode:
             for sample in ["X", "Y"]:
-                matrix_dir = f"{self.dir_name}/match_barcode/{sample}.matrix"
+                matrix_dir = f"{self.dir_name}/match_barcode/{sample}.matrix/filtered"
                 if not os.path.exists(matrix_dir):
                     os.makedirs(matrix_dir)
                 # copy match_barcode to matrix_dir
