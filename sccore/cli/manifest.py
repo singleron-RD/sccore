@@ -98,7 +98,9 @@ class SamplesheetGenerator:
             return None, None, None
         for prefix, sample in manifest.items():
             if prefix + "_" in fn:
-                return sample, prefix, self.get_pair(fn)
+                pair = self.get_pair(fn)
+                if pair:
+                    return sample, prefix, pair
         return None, None, None
 
     def write_samplesheet(self):
