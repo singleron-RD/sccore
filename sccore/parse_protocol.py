@@ -145,7 +145,7 @@ def check_seq_mismatch(seq_list, raw_list, mismatch_list):
         if seq not in raw_list[index]:
             if seq not in mismatch_list[index]:
                 valid = False
-                res = []
+                res.append("")
             else:
                 corrected = True
                 res.append(mismatch_list[index][seq])
