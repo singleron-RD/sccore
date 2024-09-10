@@ -9,6 +9,7 @@ with open("README.md", "r") as fh:
 install_requires = [
     "pysam",
     "pandas>=2.0.0",
+    "scipy",
 ]
 
 entrys = []

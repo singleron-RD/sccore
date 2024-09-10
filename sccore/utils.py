@@ -1,9 +1,9 @@
-from collections import defaultdict
 import gzip
 import json
 import logging
 import sys
 import time
+from collections import defaultdict
 from datetime import timedelta
 from functools import wraps
 
