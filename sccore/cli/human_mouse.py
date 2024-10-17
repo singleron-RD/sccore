@@ -64,7 +64,8 @@ def main():
     dfs = []
     for d in args.celescope_dir.split(","):
         os.chdir(d)
-        paths = glob.glob("*/filtered")
+        print(f"checking path: {d}\n")
+        paths = glob.glob("*/*/filtered")
         for path in paths:
             sample = path.split("/")[0]
             dict = get_metrics_dict(path, args.doublet_threshold)
