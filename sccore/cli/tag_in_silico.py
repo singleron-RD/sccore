@@ -8,9 +8,11 @@ from scipy.stats import poisson
 
 
 class Chip:
-    def __init__(self, well_num, barcode_num):
+    def __init__(self, well_num, barcode_num, seed=1):
         self._well_num = well_num
         self._barcode_num = barcode_num
+        self._seed = seed
+
         self._well_barcode = self.get_well_barcodes()
 
     def get_well_barcodes(self):
@@ -19,6 +21,7 @@ class Chip:
         Returns:
             well_barcode: {WELL index(0-based): BARCODE index(0-based)}
         """
+        random.seed(self._seed)
         well_barcode = dict()
         for well in range(self._well_num):
             barcode = random.randint(0, self._barcode_num - 1)
@@ -87,17 +90,20 @@ class AddCell:
         tag_num: int,
         chip: Chip,
         model: Model,
+        seed=1,
     ):
         self._cell_num = cell_num
         self._tag_num = tag_num
         self._chip = chip
         self._model = model
+        self._seed = seed
 
     def _get_well_cellNum(self) -> dict[int, int]:
         """
         Returns:
             well_cellNum: {well_index: cell number}
         """
+        random.seed(self._seed)
         well_cellNum = dict()
         well_num = self._chip.well_num
         count0, count1, count2 = self._model.count(well_num, self._cell_num)
@@ -117,6 +123,7 @@ class AddCell:
         Returns:
             tag_dict: {well_index: tag}
         """
+        random.seed(self._seed)
         tag_dict = {}
         for well in well_cellNum:
             if well_cellNum[well] == 2:
@@ -195,7 +202,7 @@ def main():
     parser.add_argument("--seed", type=int, default=1)
     args = parser.parse_args()
 
-    chip = Chip(well_num=args.well, barcode_num=args.barcode_num)
+    chip = Chip(well_num=args.well, barcode_num=args.barcode_num, seed=args.seed)
     model = ZIP_model(PSI=0.4)
 
     rows = []
@@ -203,12 +210,12 @@ def main():
         cell_num = int(cell_num)
         for tag_num in args.tag.split(","):
             tag_num = int(tag_num)
-            random.seed(args.seed)
             add_cell = AddCell(
                 cell_num=cell_num,
                 tag_num=tag_num,
                 chip=chip,
                 model=model,
+                seed=args.seed,
             )
             recovered, single, classified, unclassified = add_cell.run(iter=2)
             df_dict = {
