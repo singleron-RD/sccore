@@ -174,7 +174,7 @@ class AddCell:
 
     @property
     def cell_num(self):
-        """recovered number of loaded cells"""
+        """number of loaded cells"""
         return self._cell_num
 
     @property
