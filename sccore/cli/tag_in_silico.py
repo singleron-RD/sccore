@@ -145,10 +145,10 @@ class AddCell:
                     classified += 1
             else:
                 single += 1
-        total = len(class_dict)
-        unclassified = total - single - classified
-        # print(total, single, classified, unclassified)
-        return total, single, classified, unclassified
+        recovered = len(class_dict)
+        unclassified = recovered - single - classified
+        # print(recovered, single, classified, unclassified)
+        return recovered, single, classified, unclassified
 
     def run_once(self):
         well_cellNum = self._get_well_cellNum()
@@ -161,20 +161,20 @@ class AddCell:
         Args:
             iter: int, number of iterations.
         Returns:
-            tuple: (total, single, classified, unclassified)
-                - total: recovered cells.
+            tuple: (recovered, single, classified, unclassified)
+                - recovered: recovered cells.
                 - single: the number of cells with tags == 1.
                 - classified: the number of cells which have tags > 1 and the tags are not the same.
                 - unclassified: the number of cells which have tags > 1 and the tags are the same.
         """
         results = [self.run_once() for _ in range(iter)]
         print(results)
-        total, single, classified, unclassified = [int(sum(x) / iter) for x in zip(*results)]
-        return total, single, classified, unclassified
+        recovered, single, classified, unclassified = [int(sum(x) / iter) for x in zip(*results)]
+        return recovered, single, classified, unclassified
 
     @property
     def cell_num(self):
-        """total number of loaded cells"""
+        """recovered number of loaded cells"""
         return self._cell_num
 
     @property
@@ -210,14 +210,14 @@ def main():
                 chip=chip,
                 model=model,
             )
-            total, single, classified, unclassified = add_cell.run(iter=2)
+            recovered, single, classified, unclassified = add_cell.run(iter=2)
             df_dict = {
                 "Cells loaded": cell_num,
-                "Estimated recovered cells": total,
+                "Estimated recovered cells": recovered,
                 "N_tags": tag_num,
-                "Estimated doublet percent": format_percent(1 - single / total),
-                "Estimated classified percent": format_percent(classified / total),
-                "Estimated unclassified percent": format_percent(unclassified / total),
+                "Estimated doublet percent": format_percent(1 - single / recovered),
+                "Estimated classified percent": format_percent(classified / recovered),
+                "Estimated unclassified percent": format_percent(unclassified / recovered),
             }
             rows.append(df_dict)
     df = pd.DataFrame(rows)
