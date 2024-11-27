@@ -11,7 +11,7 @@ def main():
     parser.add_argument("--fq1")
     parser.add_argument("--bam")
     parser.add_argument("--assets_dir")
-    parser.add_argument("--num", default=10**6, type=int)
+    parser.add_argument("--num", default=10**4, type=int)
     args = parser.parse_args()
     if not (args.fq1 or args.bam):
         raise ValueError("Please provide fq1 or bam")
@@ -36,7 +36,7 @@ def main():
             if name1 in read_names:
                 found += 1
                 invalid_fastq.write(seq1 + "\n")
-                if found == 10000:
+                if found == args.num:
                     break
 
     elif args.fq1:

@@ -54,7 +54,7 @@ class Model:
 
 # Zero-Inflated Poisson
 class ZIP_model(Model):
-    def __init__(self, PSI: float = 0.4) -> None:
+    def __init__(self, PSI) -> None:
         self._PSI = PSI
 
     @staticmethod
@@ -200,10 +200,11 @@ def main():
     parser.add_argument("--tag", required=True, type=str)
     parser.add_argument("--barcode_num", default=96 * 96 * 192, type=int)
     parser.add_argument("--seed", type=int, default=1)
+    parser.add_argument("--psi", type=float, default=0.5)
     args = parser.parse_args()
 
     chip = Chip(well_num=args.well, barcode_num=args.barcode_num, seed=args.seed)
-    model = ZIP_model(PSI=0.4)
+    model = ZIP_model(PSI=args.psi)
 
     rows = []
     for cell_num in args.cell.split(","):

@@ -42,7 +42,7 @@ class SamplesheetGenerator:
         Determine the read pair (R1, R2, etc.) of a fastq file based on the file name.
         """
         for x in (1, 2, 3):
-            for y in (f"_{x}_", f"_{x}.", f"_R{x}_", f"_R{x}."):
+            for y in (f"_R{x}_", f"_R{x}.", f"_{x}_", f"_{x}."):
                 if y in file_name:
                     return x
 
@@ -112,7 +112,6 @@ class SamplesheetGenerator:
             pair_fqs = self.sample_prefix_pair_fq[sample][prefix]
             for x in range(1, self.max_pair + 1):
                 pair_fqs[x].sort()
-
             for i in range(len(pair_fqs[1])):
                 row = {"sample": sample}
                 for x in range(1, self.max_pair + 1):
