@@ -6,11 +6,12 @@ from sccore.__init__ import VERSION
 with open("README.md", "r") as fh:
     long_description = fh.read()
 
-install_requires = [
-    "pysam",
-    "pandas>=2.0.0",
-    "scipy",
-]
+def parse_requirements(filename):
+    with open(filename, 'r') as file:
+        lines = file.readlines()
+    requirements = [line.strip() for line in lines if line.strip() and not line.startswith('#')]
+    return requirements
+
 
 entrys = []
 for file in glob.glob("sccore/cli/*.py"):
@@ -39,5 +40,5 @@ setuptools.setup(
     python_requires=">=3.9",
     include_package_data=True,
     entry_points=entry_dict,
-    install_requires=install_requires,
+    install_requires=parse_requirements("requirements.txt"),
 )

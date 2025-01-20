@@ -1,7 +1,8 @@
 tasks:
-    - command: pip install pandas pysam numpy
+    - command: pip install -r requirements.txt
 
 vscode:
     extensions:
         - ms-toolsai.jupyter
         - ms-python.python
+        - amazonwebservices.amazon-q-vscode

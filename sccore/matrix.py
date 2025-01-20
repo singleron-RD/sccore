@@ -5,7 +5,7 @@ from collections import defaultdict
 import scipy.io
 import scipy.sparse
 import pandas as pd
-from . import utils
+import utils
 
 
 BARCODE_FILE_NAME = "barcodes.tsv.gz"

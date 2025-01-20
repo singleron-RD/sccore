@@ -3,9 +3,10 @@ import json
 import os
 import re
 import sys
+from importlib import resources
 from collections import defaultdict
 
-import pyfastx
+import pysam
 from sccore import utils
 
 logger = utils.get_logger(__name__)
@@ -155,18 +156,18 @@ def check_seq_mismatch(seq_list, raw_list, mismatch_list):
     return valid, corrected, "_".join(res)
 
 
-def get_protocol_dict(assets_dir):
+def get_protocol_dict():
     """
     Return:
     protocol_dict. Key: protocol name, value: protocol dict
 
-    >>> protocol_dict = get_protocol_dict("./assets/")
+    >>> protocol_dict = get_protocol_dict()
     >>> protocol_dict["GEXSCOPE-MicroBead"]["pattern_dict"]
     {'C': [slice(0, 12, None)], 'U': [slice(12, 20, None)]}
     """
-    json_file = os.path.join(assets_dir, "protocols.json")
+    json_file = resources.files("sccore.protocols").joinpath("protocols.json")
     protocol_dict = json.load(open(json_file))
-    whitelist_dir = os.path.join(assets_dir, "whitelist")
+    whitelist_dir = resources.files("sccore.protocols").joinpath("whitelist")
     # add folder prefix
     for protocol in protocol_dict:
         cur = protocol_dict[protocol]
@@ -183,27 +184,23 @@ def get_protocol_dict(assets_dir):
 class Auto:
     """
     Auto detect singleron protocols from R1-read
-    GEXSCOPE-MicroBead
-    GEXSCOPE-V1
-    GEXSCOPE-V2
     """
 
-    def __init__(self, fq1_list, sample, assets_dir="assets/", max_read=10000):
+    def __init__(self, fq1_list, sample,  max_read=10000):
         """
-        Args:
-            assets_dir: Expects file 'protocols.json' and 'whitelist/{protocol}' folder under assets_dir
-
         Returns:
             protocol, protocol_dict[protocol]
         """
         self.fq1_list = fq1_list
         self.max_read = max_read
         self.sample = sample
-        self.protocol_dict = get_protocol_dict(assets_dir)
+        self.protocol_dict = get_protocol_dict()
         self.mismatch_dict = {}
         for protocol in self.protocol_dict:
             if "bc" in self.protocol_dict[protocol]:
                 self.mismatch_dict[protocol] = get_raw_mismatch(self.protocol_dict[protocol]["bc"], 1)
+
+        self.v3_linker_mismatch = get_raw_mismatch(self.protocol_dict["GEXSCOPE-V3"]["linker"], 1)
 
     def run(self):
         """
@@ -223,6 +220,26 @@ class Auto:
             sys.exit(f"Error: multiple protocols are not allowed for one sample: {self.sample}! \n" + str(fq_protocol))
         protocol = list(fq_protocol.values())[0]
         return protocol
+
+    def v3_offset(self, seq):
+        """
+        return -1 if not v3
+
+        >>> seq = "AT" + "TCGACTGTC" + "ACGATG" + "TTCTAGGAT" + "CATAGT" + "TGCACGAGA" + "C" + "CATATCAATGGG" + "TTTTTTTTTT"
+        >>> runner = Auto([], "fake_sample")
+        >>> runner.v3_offset(seq)
+        2
+        >>> seq = "TCGACTGTC" + "ACGATG" + "TTCTAGGAT" + "CATAGT" + "TGCACGAGA" + "C" + "CATATCAATGGG" + "TTTTTTTTTT"
+        >>> runner.v3_offset(seq)
+        0
+        >>> seq = "TCGACTGTC" + "ATATAT" + "TTCTAGGAT" + "CATAGT" + "TGCACGAGA" + "C" + "CATATCAATGGG" + "TTTTTTTTTT"
+        >>> runner.v3_offset(seq)
+        -1
+        """
+        for offset in range(4):
+            if self.is_protocol(seq[offset:], "GEXSCOPE-V3"):
+                return offset
+
 
     def is_protocol(self, seq, protocol):
         """check if seq matches the barcode of protocol"""
@@ -265,9 +282,10 @@ class Auto:
     def get_fq_protocol(self, fq1):
         results = defaultdict(int)
 
-        fq = pyfastx.Fastx(fq1)
+        fq = pysam.FastxFile(fq1)
         n = 0
-        for name, seq, qual in fq:
+        for read in fq:
+            seq = read.sequence
             n += 1
             protocol = self.seq_protocol(seq)
             if protocol:
