@@ -6,10 +6,11 @@ from sccore.__init__ import VERSION
 with open("README.md", "r") as fh:
     long_description = fh.read()
 
+
 def parse_requirements(filename):
-    with open(filename, 'r') as file:
+    with open(filename, "r") as file:
         lines = file.readlines()
-    requirements = [line.strip() for line in lines if line.strip() and not line.startswith('#')]
+    requirements = [line.strip() for line in lines if line.strip() and not line.startswith("#")]
     return requirements
 
 

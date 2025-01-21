@@ -186,7 +186,7 @@ class Auto:
     Auto detect singleron protocols from R1-read
     """
 
-    def __init__(self, fq1_list, sample,  max_read=10000):
+    def __init__(self, fq1_list, sample, max_read=10000):
         """
         Returns:
             protocol, protocol_dict[protocol]
@@ -199,7 +199,6 @@ class Auto:
         for protocol in self.protocol_dict:
             if "bc" in self.protocol_dict[protocol]:
                 self.mismatch_dict[protocol] = get_raw_mismatch(self.protocol_dict[protocol]["bc"], 1)
-
         self.v3_linker_mismatch = get_raw_mismatch(self.protocol_dict["GEXSCOPE-V3"]["linker"], 1)
 
     def run(self):
@@ -221,63 +220,12 @@ class Auto:
         protocol = list(fq_protocol.values())[0]
         return protocol
 
-    def v3_offset(self, seq):
-        """
-        return -1 if not v3
-
-        >>> seq = "AT" + "TCGACTGTC" + "ACGATG" + "TTCTAGGAT" + "CATAGT" + "TGCACGAGA" + "C" + "CATATCAATGGG" + "TTTTTTTTTT"
-        >>> runner = Auto([], "fake_sample")
-        >>> runner.v3_offset(seq)
-        2
-        >>> seq = "TCGACTGTC" + "ACGATG" + "TTCTAGGAT" + "CATAGT" + "TGCACGAGA" + "C" + "CATATCAATGGG" + "TTTTTTTTTT"
-        >>> runner.v3_offset(seq)
-        0
-        >>> seq = "TCGACTGTC" + "ATATAT" + "TTCTAGGAT" + "CATAGT" + "TGCACGAGA" + "C" + "CATATCAATGGG" + "TTTTTTTTTT"
-        >>> runner.v3_offset(seq)
-        -1
-        """
-        for offset in range(4):
-            if self.is_protocol(seq[offset:], "GEXSCOPE-V3"):
-                return offset
-
-
     def is_protocol(self, seq, protocol):
         """check if seq matches the barcode of protocol"""
         raw_list, mismatch_list = self.mismatch_dict[protocol]
         bc_list = [seq[x] for x in self.protocol_dict[protocol]["pattern_dict"]["C"]]
         valid, _corrected, _res = check_seq_mismatch(bc_list, raw_list, mismatch_list)
         return valid
-
-    def seq_protocol(self, seq):
-        """
-        Returns: protocol or None
-
-        >>> import tempfile
-        >>> runner = Auto([], "fake_sample")
-        >>> seq = "TCGACTGTC" + "ATCCACGTGCTTGAGA" + "TTCTAGGAT" + "TCAGCATGCGGCTACG" + "TGCACGAGA" + "C" + "CATATCAATGGG" + "TTTTTTTTTT"
-        >>> runner.seq_protocol(seq)
-        'GEXSCOPE-V2'
-        >>> seq = "NCAGATTC" + "TCGGTGACAGCCATAT" + "GTACGCAA" + "CGTAGTCAGAAGCTGA" + "CTGAGCCA" + "C" + "TCCGAAGCCCAT" + "TTTTTTTTTT"
-        >>> runner.seq_protocol(seq)
-        'GEXSCOPE-V1'
-        >>> seq = "NCAGATTC" + "TCGGTGACAGCCATAT" + "GTACGCAA" + "CGTAGTCAGAAGCTGA" + "CTGAGCCA"  + "TCCGAAGCC" + "CTGTCT"
-        >>> runner.seq_protocol(seq)
-        'GEXSCOPE-V1'
-        >>> seq = "NCAGATTC" + "TCGGTGACAGCCATAT" + "GTACGCAA" + "CGTAGTCAGAAGCTGA" + "CTGAGCCA"  + "TCCGAAGCC"
-        >>> runner.seq_protocol(seq)
-        'GEXSCOPE-V1'
-        >>> seq = "ATCGATCGATCG" + "ATCGATCG" + "C" + "TTTTTTTTTT"
-        >>> runner.seq_protocol(seq)
-        'GEXSCOPE-MicroBead'
-        """
-
-        for protocol in ["GEXSCOPE-V2", "GEXSCOPE-V1"]:
-            if self.is_protocol(seq, protocol):
-                return protocol
-
-        # check if it is MicroBead
-        if seq[16:20] != "TTTT" and seq[22:26] == "TTTT":
-            return "GEXSCOPE-MicroBead"
 
     def get_fq_protocol(self, fq1):
         results = defaultdict(int)
@@ -297,11 +245,77 @@ class Auto:
 
         protocol, read_counts = sorted_counts[0]
         percent = float(read_counts) / n
-        if percent < 0.5:
-            logger.warning("Valid protocol read counts percent < 0.5")
         if percent < 0.1:
             logger.error("Valid protocol read counts percent < 0.1")
             raise Exception("Auto protocol detection failed! ")
+        elif percent < 0.5:
+            logger.warning("Valid protocol read counts percent < 0.5")
         logger.info(f"{fq1}: {protocol}")
 
         return protocol
+
+
+class AutoRNA(Auto):
+    def __init__(self, fq1_list, sample, max_read=10000):
+        super().__init__(fq1_list, sample, max_read)
+        self.v3_linker_mismatch = get_raw_mismatch(self.protocol_dict["GEXSCOPE-V3"]["linker"], 1)
+
+    def v3_offset(self, seq):
+        """
+        return -1 if not v3
+
+        >>> seq = "AT" + "TCGACTGTC" + "ACGATG" + "TTCTAGGAT" + "CATAGT" + "TGCACGAGA" + "C" + "CATATCAATGGG" + "TTTTTTTTTT"
+        >>> runner = AutoRNA([], "fake_sample")
+        >>> runner.v3_offset(seq)
+        2
+        >>> seq = "TCGACTGTC" + "ACGATG" + "TTCTAGGAT" + "CATAGT" + "TGCACGAGA" + "C" + "CATATCAATGGG" + "TTTTTTTTTT"
+        >>> runner.v3_offset(seq)
+        0
+        >>> seq = "TCGACTGTC" + "ATATAT" + "TTCTAGGAT" + "CATAGT" + "TGCACGAGA" + "C" + "CATATCAATGGG" + "TTTTTTTTTT"
+        >>> runner.v3_offset(seq)
+        -1
+        """
+        bc_len = 9
+        linker_len = 6
+        for offset in range(4):
+            first_linker_start = offset + bc_len
+            second_linker_start = first_linker_start + linker_len + bc_len
+            first_linker_seq = seq[first_linker_start : first_linker_start + linker_len]
+            second_linker_seq = seq[second_linker_start : second_linker_start + linker_len]
+            valid, _, _ = check_seq_mismatch([first_linker_seq, second_linker_seq], *self.v3_linker_mismatch)
+            if valid:
+                return offset
+        return -1
+
+    def seq_protocol(self, seq):
+        """
+        Returns: protocol or None
+
+        >>> import tempfile
+        >>> runner = AutoRNA([], "fake_sample")
+        >>> seq = "TCGACTGTC" + "ATCCACGTGCTTGAGA" + "TTCTAGGAT" + "TCAGCATGCGGCTACG" + "TGCACGAGA" + "C" + "CATATCAATGGG" + "TTTTTTTTTT"
+        >>> runner.seq_protocol(seq)
+        'GEXSCOPE-V2'
+        >>> seq = "NCAGATTC" + "TCGGTGACAGCCATAT" + "GTACGCAA" + "CGTAGTCAGAAGCTGA" + "CTGAGCCA" + "C" + "TCCGAAGCCCAT" + "TTTTTTTTTT"
+        >>> runner.seq_protocol(seq)
+        'GEXSCOPE-V1'
+        >>> seq = "NCAGATTC" + "TCGGTGACAGCCATAT" + "GTACGCAA" + "CGTAGTCAGAAGCTGA" + "CTGAGCCA"  + "TCCGAAGCC" + "CTGTCT"
+        >>> runner.seq_protocol(seq)
+        'GEXSCOPE-V1'
+        >>> seq = "NCAGATTC" + "TCGGTGACAGCCATAT" + "GTACGCAA" + "CGTAGTCAGAAGCTGA" + "CTGAGCCA"  + "TCCGAAGCC"
+        >>> runner.seq_protocol(seq)
+        'GEXSCOPE-V1'
+        >>> seq = "ATCGATCGATCG" + "ATCGATCG" + "C" + "TTTTTTTTTT"
+        >>> runner.seq_protocol(seq)
+        'GEXSCOPE-MicroBead'
+        """
+        if self.v3_offset(seq) != -1:
+            return "GEXSCOPE-V3"
+
+        for protocol in ["GEXSCOPE-V2", "GEXSCOPE-V1", "AccuraCode"]:
+            if self.is_protocol(seq, protocol):
+                return protocol
+
+        # check if it is MicroBead
+        if seq[16:20] != "TTTT" and seq[22:26] == "TTTT":
+            return "GEXSCOPE-MicroBead"
