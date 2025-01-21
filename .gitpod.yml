@@ -7,3 +7,4 @@ vscode:
         - ms-toolsai.jupyter
         - ms-python.python
         - amazonwebservices.amazon-q-vscode
+        - charliermarsh.ruff

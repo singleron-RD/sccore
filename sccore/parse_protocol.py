@@ -186,15 +186,14 @@ class Auto:
     Auto detect singleron protocols from R1-read
     """
 
-    def __init__(self, fq1_list, sample, max_read=10000):
+    def __init__(self, fq1_list, protocol_dict, max_read=10000):
         """
         Returns:
             protocol, protocol_dict[protocol]
         """
         self.fq1_list = fq1_list
         self.max_read = max_read
-        self.sample = sample
-        self.protocol_dict = get_protocol_dict()
+        self.protocol_dict = protocol_dict
         self.mismatch_dict = {}
         for protocol in self.protocol_dict:
             if "bc" in self.protocol_dict[protocol]:
@@ -216,7 +215,9 @@ class Auto:
             protocol = self.get_fq_protocol(fastq1)
             fq_protocol[fastq1] = protocol
         if len(set(fq_protocol.values())) != 1:
-            sys.exit(f"Error: multiple protocols are not allowed for one sample: {self.sample}! \n" + str(fq_protocol))
+            sys.exit(
+                f"Error: multiple protocols are not allowed for one sample: {self.fq1_list}! \n" + str(fq_protocol)
+            )
         protocol = list(fq_protocol.values())[0]
         return protocol
 
@@ -226,6 +227,13 @@ class Auto:
         bc_list = [seq[x] for x in self.protocol_dict[protocol]["pattern_dict"]["C"]]
         valid, _corrected, _res = check_seq_mismatch(bc_list, raw_list, mismatch_list)
         return valid
+
+    def seq_protocol(self, seq):
+        """check if seq matches any protocol in protocol_dict"""
+        for protocol in self.protocol_dict:
+            if self.is_protocol(seq, protocol):
+                return protocol
+        return None
 
     def get_fq_protocol(self, fq1):
         results = defaultdict(int)
@@ -256,8 +264,8 @@ class Auto:
 
 
 class AutoRNA(Auto):
-    def __init__(self, fq1_list, sample, max_read=10000):
-        super().__init__(fq1_list, sample, max_read)
+    def __init__(self, fq1_list, max_read=10000):
+        super().__init__(fq1_list, get_protocol_dict(), max_read)
         self.v3_linker_mismatch = get_raw_mismatch(self.protocol_dict["GEXSCOPE-V3"]["linker"], 1)
 
     def v3_offset(self, seq):
@@ -293,6 +301,9 @@ class AutoRNA(Auto):
 
         >>> import tempfile
         >>> runner = AutoRNA([], "fake_sample")
+        >>> seq = "AT" + "TCGACTGTC" + "ACGATG" + "TTCTAGGAT" + "CATAGT" + "TGCACGAGA" + "C" + "CATATCAATGGG" + "TTTTTTTTTT"
+        >>> runner.seq_protocol(seq)
+        'GEXSCOPE-V3'
         >>> seq = "TCGACTGTC" + "ATCCACGTGCTTGAGA" + "TTCTAGGAT" + "TCAGCATGCGGCTACG" + "TGCACGAGA" + "C" + "CATATCAATGGG" + "TTTTTTTTTT"
         >>> runner.seq_protocol(seq)
         'GEXSCOPE-V2'

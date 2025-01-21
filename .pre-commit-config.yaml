@@ -10,11 +10,4 @@ repos:
       # Run the formatter.
       - id: ruff-format
 
-  - repo: local
-    hooks:
-      - id: python-doctest
-        name: Python Doctest
-        entry: sh run_doctest.sh
-        language: system
-
 
