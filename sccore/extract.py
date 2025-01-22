@@ -14,7 +14,9 @@ class Extract:
         self.protocol = protocol
         protocol_meta = protocol_dict[protocol]
         self.pattern_dict = protocol_meta["pattern_dict"]
-        self.raw_list, self.mismatch_list = parse_protocol.get_raw_mismatch(protocol_meta["bc"], 1)
+        self.raw_list, self.mismatch_list = parse_protocol.create_mismatch_origin_dicts_from_whitelists(
+            protocol_meta["bc"], 1
+        )
         # v3
         if protocol == "GEXSCOPE-V3":
             self.offset_runner = parse_protocol.AutoRNA(fq1_list)

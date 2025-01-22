@@ -12,110 +12,84 @@ from sccore import utils
 logger = utils.get_logger(__name__)
 
 
-def get_seq_str(seq, sub_pattern):
-    """
-    join seq slices.
+def parse_pattern(pattern: str, allowed: str = "CLUNT") -> dict[str, list[slice]]:
+    """Parse a pattern string into a dictionary of slices.
 
-    Args:
-        seq: usually R1 read
-        sub_pattern: [slice(0,8),slice(16,24)]
-
-    Returns:
-        joined intervals seq
-
-    >>> sub_pattern_dict = [slice(0,2)]
-    >>> seq = "A" * 2 + "T" * 2
-    >>> get_seq_str(seq, sub_pattern_dict)
-    'AA'
-    """
-    return "".join([seq[x] for x in sub_pattern])
-
-
-def findall_mismatch(seq, n_mismatch=1, bases="ACGTN"):
-    """
-    choose locations where there's going to be a mismatch using combinations
-    and then construct all satisfying lists using product
-
-    Return:
-    all mismatch <= n_mismatch set.
-
-    >>> answer = set(["TCG", "AAG", "ACC", "ATG", "ACT", "ACN", "GCG", "ANG", "ACA", "ACG", "CCG", "AGG", "NCG"])
-    >>> seq_set = findall_mismatch("ACG")
-    >>> seq_set == answer
-    True
-    """
-    seq_set = set()
-    seq_len = len(seq)
-    if n_mismatch > seq_len:
-        n_mismatch = seq_len
-    for locs in itertools.combinations(range(seq_len), n_mismatch):
-        seq_locs = [[base] for base in seq]
-        for loc in locs:
-            seq_locs[loc] = list(bases)
-        for poss in itertools.product(*seq_locs):
-            seq_set.add("".join(poss))
-    return seq_set
-
-
-def get_mismatch_dict(seq_list, n_mismatch=1):
-    """
-    Return:
-    mismatch dict. Key: mismatch seq, value: seq in seq_list
-
-    >>> seq_list = ["AACGTGAT", "AAACATCG"]
-    >>> mismatch_dict = get_mismatch_dict(seq_list)
-    >>> mismatch_dict["AACGTGAA"] == "AACGTGAT"
-    True
-    """
-    mismatch_dict = {}
-    for seq in seq_list:
-        seq = seq.strip()
-        if seq == "":
-            continue
-        for mismatch_seq in findall_mismatch(seq, n_mismatch):
-            mismatch_dict[mismatch_seq] = seq
-    return mismatch_dict
-
-
-def parse_pattern(pattern, allowed="CLUNT"):
-    """
     >>> pattern_dict = parse_pattern("C8L16C8L16C8L1U12T18")
     >>> pattern_dict['C']
     [slice(0, 8, None), slice(24, 32, None), slice(48, 56, None)]
     >>> pattern_dict['L']
     [slice(8, 24, None), slice(32, 48, None), slice(56, 57, None)]
     """
-    pattern_dict = {}
-    p = re.compile(r"([A-Z])(\d+)")
-    tmp = p.findall(pattern)
-    if not tmp:
-        sys.exit(f"Invalid pattern: {pattern}")
+    if not pattern:
+        raise ValueError("Pattern cannot be an empty string")
+
+    pattern_slices = {}
+    p = re.compile(r"([A-Z])(\d+)")  # Compile the regex
+
     start = 0
-    for x, length in tmp:
-        if x not in allowed:
-            sys.exit(f"Invalid pattern: {pattern}")
-        if x not in pattern_dict:
-            pattern_dict[x] = []
+    for char, length in p.findall(pattern):
+        if char not in allowed:
+            raise ValueError(f"Invalid character '{char}' in pattern: {pattern}")
+        if char not in pattern_slices:
+            pattern_slices[char] = []
         end = start + int(length)
-        pattern_dict[x].append(slice(start, end))
+        pattern_slices[char].append(slice(start, end))
         start = end
-    return pattern_dict
+    return pattern_slices
 
 
-def get_raw_mismatch(files: list, n_mismatch: int):
+def create_mismatch_seqs(seq: str, max_mismatch=1, allowed_bases="ACGTN") -> set[str]:
+    """Create all sequences within a specified number of mismatches from the input sequence.
+
+    >>> answer = set(["TCG", "AAG", "ACC", "ATG", "ACT", "ACN", "GCG", "ANG", "ACA", "ACG", "CCG", "AGG", "NCG"])
+    >>> seq_set = create_mismatch_seqs("ACG")
+    >>> seq_set == answer
+    True
     """
-    Args:
-        files: whitelist file paths
-        n_mismatch: allowed number of mismatch bases
-    Returns:
-        raw_list
-        mismatch_list
+    if max_mismatch < 0:
+        raise ValueError("max_mismatch must be non-negative")
+    if max_mismatch > len(seq):
+        raise ValueError(f"max_mismatch ({max_mismatch}) cannot be greater than the sequence length ({len(seq)})")
+
+    result = set()
+    for locs in itertools.combinations(range(len(seq)), max_mismatch):
+        seq_locs = [list(allowed_bases) if i in locs else [base] for i, base in enumerate(seq)]
+        result.update("".join(p) for p in itertools.product(*seq_locs))
+    return result
+
+
+def create_mismatch_origin_dict(origin_seqs: list, n_mismatch=1) -> dict[str:str]:
+    """Create a dictionary mapping sequences with mismatches to their original sequences(in whitelist).
+
+    >>> origin_seqs = ["AACGTGAT", "AAACATCG"]
+    >>> mismatch_dict = create_mismatch_origin_dict(origin_seqs)
+    >>> mismatch_dict["AACGTGAA"] == "AACGTGAT"
+    True
+    """
+    result = {}
+    for origin_seq in origin_seqs:
+        origin_seq = origin_seq.strip()
+        if origin_seq == "":
+            continue
+        for mismatch_seq in create_mismatch_seqs(origin_seq, n_mismatch):
+            result[mismatch_seq] = origin_seq
+    return result
+
+
+def create_mismatch_origin_dicts_from_whitelists(whitelists: list, n_mismatch: int = 1) -> (list, list):
+    """Returns origin whitelist list and mismatch dict list.
+
+    >>> whitelists = [resources.files("sccore.protocols").joinpath("whitelist/GEXSCOPE-V1/bc.txt")]
+    >>> raw_list, mismatch_list = create_mismatch_origin_dicts_from_whitelists(whitelists)
+    >>> len(raw_list) == len(mismatch_list)
+    True
     """
     raw_list, mismatch_list = [], []
-    for f in files:
+    for f in whitelists:
         barcodes = utils.read_one_col(f)
         raw_list.append(set(barcodes))
-        barcode_mismatch_dict = get_mismatch_dict(barcodes, n_mismatch)
+        barcode_mismatch_dict = create_mismatch_origin_dict(barcodes, n_mismatch)
         mismatch_list.append(barcode_mismatch_dict)
 
     return raw_list, mismatch_list
@@ -130,7 +104,7 @@ def check_seq_mismatch(seq_list, raw_list, mismatch_list):
 
     >>> seq_list = ['ATA', 'AAT', 'ATA']
     >>> correct_set_list = [{'AAA'},{'AAA'},{'AAA'}]
-    >>> mismatch_dict_list = [get_mismatch_dict(['AAA'])] * 3
+    >>> mismatch_dict_list = [create_mismatch_origin_dict(['AAA'])] * 3
 
     >>> check_seq_mismatch(seq_list, correct_set_list, mismatch_dict_list)
     (True, True, 'AAA_AAA_AAA')
@@ -197,8 +171,12 @@ class Auto:
         self.mismatch_dict = {}
         for protocol in self.protocol_dict:
             if "bc" in self.protocol_dict[protocol]:
-                self.mismatch_dict[protocol] = get_raw_mismatch(self.protocol_dict[protocol]["bc"], 1)
-        self.v3_linker_mismatch = get_raw_mismatch(self.protocol_dict["GEXSCOPE-V3"]["linker"], 1)
+                self.mismatch_dict[protocol] = create_mismatch_origin_dicts_from_whitelists(
+                    self.protocol_dict[protocol]["bc"], 1
+                )
+        self.v3_linker_mismatch = create_mismatch_origin_dicts_from_whitelists(
+            self.protocol_dict["GEXSCOPE-V3"]["linker"], 1
+        )
 
     def run(self):
         """
@@ -266,7 +244,9 @@ class Auto:
 class AutoRNA(Auto):
     def __init__(self, fq1_list, max_read=10000):
         super().__init__(fq1_list, get_protocol_dict(), max_read)
-        self.v3_linker_mismatch = get_raw_mismatch(self.protocol_dict["GEXSCOPE-V3"]["linker"], 1)
+        self.v3_linker_mismatch = create_mismatch_origin_dicts_from_whitelists(
+            self.protocol_dict["GEXSCOPE-V3"]["linker"], 1
+        )
 
     def v3_offset(self, seq):
         """

@@ -42,7 +42,7 @@ def main():
     elif args.fq1:
         protocol_dict = parse_protocol.get_protocol_dict(args.assets_dir)
         v2_dict = protocol_dict["GEXSCOPE-V2"]
-        v2_raw, v2_mismatch = parse_protocol.get_raw_mismatch(v2_dict["bc"], 1)
+        v2_raw, v2_mismatch = parse_protocol.create_mismatch_origin_dicts_from_whitelists(v2_dict["bc"], 1)
 
         invalid_fastq = open("invalid.fastq", "wt")
         fq1 = pyfastx.Fastx(args.fq1)
