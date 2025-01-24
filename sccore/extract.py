@@ -55,5 +55,5 @@ class Extract:
                         if corrected:
                             corrected_reads += 1
                         read_name = f"{corrected_seq}:{umi}:{raw_reads}"
-                        out_fh.write(f"@{read_name}\n{e2.sequence}\n+\n{e2.quality}\n")
+                        out_fh.write(f"@{read_name}\n{e2.sequence}\n+\n{e2.quality}\n")  # type: ignore
         return raw_reads, valid_reads, corrected_reads

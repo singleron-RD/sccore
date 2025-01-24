@@ -24,7 +24,7 @@ def parse_pattern(pattern: str, allowed: str = "CLUNT") -> dict[str, list[slice]
     if not pattern:
         raise ValueError("Pattern cannot be an empty string")
 
-    pattern_slices = {}
+    pattern_slices: dict[str, list[slice]] = {}
     p = re.compile(r"([A-Z])(\d+)")  # Compile the regex
 
     start = 0
@@ -59,7 +59,7 @@ def create_mismatch_seqs(seq: str, max_mismatch=1, allowed_bases="ACGTN") -> set
     return result
 
 
-def create_mismatch_origin_dict(origin_seqs: list, n_mismatch=1) -> dict[str:str]:
+def create_mismatch_origin_dict(origin_seqs: list, n_mismatch=1) -> dict[str, str]:
     """Create a dictionary mapping sequences with mismatches to their original sequences(in whitelist).
 
     >>> origin_seqs = ["AACGTGAT", "AAACATCG"]
@@ -77,7 +77,7 @@ def create_mismatch_origin_dict(origin_seqs: list, n_mismatch=1) -> dict[str:str
     return result
 
 
-def create_mismatch_origin_dicts_from_whitelists(whitelists: list, n_mismatch: int = 1) -> (list, list):
+def create_mismatch_origin_dicts_from_whitelists(whitelists: list, n_mismatch: int = 1) -> tuple[list, list]:
     """Returns origin whitelist list and mismatch dict list.
 
     >>> whitelists = [resources.files("sccore.protocols").joinpath("whitelist/GEXSCOPE-V1/bc.txt")]
@@ -139,9 +139,9 @@ def get_protocol_dict():
     >>> protocol_dict["GEXSCOPE-MicroBead"]["pattern_dict"]
     {'C': [slice(0, 12, None)], 'U': [slice(12, 20, None)]}
     """
-    json_file = resources.files("sccore.protocols").joinpath("protocols.json")
+    json_file = str(resources.files("sccore.protocols").joinpath("protocols.json"))
     protocol_dict = json.load(open(json_file))
-    whitelist_dir = resources.files("sccore.protocols").joinpath("whitelist")
+    whitelist_dir = str(resources.files("sccore.protocols").joinpath("whitelist"))
     # add folder prefix
     for protocol in protocol_dict:
         cur = protocol_dict[protocol]
@@ -174,9 +174,6 @@ class Auto:
                 self.mismatch_dict[protocol] = create_mismatch_origin_dicts_from_whitelists(
                     self.protocol_dict[protocol]["bc"], 1
                 )
-        self.v3_linker_mismatch = create_mismatch_origin_dicts_from_whitelists(
-            self.protocol_dict["GEXSCOPE-V3"]["linker"], 1
-        )
 
     def run(self):
         """
@@ -214,7 +211,7 @@ class Auto:
         return None
 
     def get_fq_protocol(self, fq1):
-        results = defaultdict(int)
+        protocol_readcount = defaultdict(int)
 
         fq = pysam.FastxFile(fq1)
         n = 0
@@ -223,10 +220,10 @@ class Auto:
             n += 1
             protocol = self.seq_protocol(seq)
             if protocol:
-                results[protocol] += 1
+                protocol_readcount[protocol] += 1
             if n == self.max_read:
                 break
-        sorted_counts = sorted(results.items(), key=lambda x: x[1], reverse=True)
+        sorted_counts = sorted(protocol_readcount.items(), key=lambda x: x[1], reverse=True)
         logger.info(sorted_counts)
 
         protocol, read_counts = sorted_counts[0]
