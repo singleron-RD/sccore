@@ -5,7 +5,7 @@ from collections import defaultdict
 import scipy.io
 import scipy.sparse
 import pandas as pd
-import utils
+from sccore import utils
 
 
 BARCODE_FILE_NAME = "barcodes.tsv.gz"
@@ -103,7 +103,7 @@ class CountMatrix:
         returns: barcodes set
         """
         barcode_file = get_matrix_file_path(matrix_dir, BARCODE_FILE_NAME)
-        barcodes, _ = utils.read_one_col(barcode_file)
+        barcodes = utils.read_one_col(barcode_file)
         return set(barcodes)
 
     @classmethod

@@ -3,6 +3,7 @@ import json
 import logging
 import sys
 import time
+import csv
 from collections import defaultdict
 from datetime import timedelta
 from functools import wraps
@@ -23,11 +24,21 @@ def read_one_col(fn):
         return [x.strip() for x in f]
 
 
-def write_one_col(a: list, fn):
+def write_one_col(a: list[str], fn):
     """write list into one column file"""
     with openfile(fn, "wt") as f:
-        f.write("\n".join(a))
-        f.write("\n")
+        f.write("\n".join(a))  # type: ignore
+        f.write("\n")  # type: ignore
+
+
+def csv2dict(csv_file):
+    """Read two column CSV file into a dictionary."""
+    data = {}
+    with openfile(csv_file, mode="rt") as f:  # Ensure text mode
+        reader = csv.reader(f)  # type: ignore
+        for row in reader:
+            data[row[0]] = row[1]
+    return data
 
 
 def fastq_str(name, seq, qual):
