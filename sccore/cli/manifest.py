@@ -85,9 +85,9 @@ class SamplesheetGenerator:
         path = pathlib.PurePath(root)
         if path.name != "filtered":
             return None
-        sample_dir = path.parent.name
+        # nextflow scrna: {sample}.matrix/filtered;  celescope: {sample}/outs/filtered
         for sample in samples:
-            if sample in sample_dir:
+            if path.parent.name == f"{sample}.matrix" or path.parent.parent.name == sample:
                 return sample
 
     def get_fastq(self, fn, manifest):
@@ -117,6 +117,8 @@ class SamplesheetGenerator:
                 for x in range(1, self.max_pair + 1):
                     row[f"fastq_{x}"] = pair_fqs[x][i]
                 if self.match:
+                    if sample not in self.sample_barcode:
+                        raise ValueError(f"matched barcode file of {sample} is not found.")
                     row["match_barcode"] = self.sample_barcode[sample]
                 rows.append(row)
 
