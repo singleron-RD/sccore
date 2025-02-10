@@ -67,7 +67,7 @@ def create_whitelist_args(whitelist_str) -> str:
 def create_solo_args(
     pattern_args: str,
     whitelist_args: str,
-    sample: str,
+    outFileNamePrefix: str,
     fq1: str,
     fq2: str,
     genomeDir: str,
@@ -85,7 +85,7 @@ def create_solo_args(
         "STAR \\\n"
         f"{pattern_args} \\\n"
         f"{whitelist_args} \\\n"
-        f"--outFileNamePrefix {sample}_ \\\n"
+        f"--outFileNamePrefix {outFileNamePrefix} \\\n"
         f"--readFilesIn {fq2} {fq1} \\\n"
         f"--readFilesCommand {read_command} \\\n"
         f"--genomeDir {genomeDir} \\\n"

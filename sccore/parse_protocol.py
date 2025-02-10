@@ -262,7 +262,8 @@ class AutoRNA(Auto):
         """
         bc_len = 9
         linker_len = 6
-        for offset in range(4):
+        max_offset_len = 3 + 1 # allow for extra 1 bases
+        for offset in range(max_offset_len+1):
             first_linker_start = offset + bc_len
             second_linker_start = first_linker_start + linker_len + bc_len
             first_linker_seq = seq[first_linker_start : first_linker_start + linker_len]
@@ -289,7 +290,7 @@ class AutoRNA(Auto):
         'GEXSCOPE-V1'
         >>> seq = "NCAGATTC" + "TCGGTGACAGCCATAT" + "GTACGCAA" + "CGTAGTCAGAAGCTGA" + "CTGAGCCA"  + "TCCGAAGCC" + "CTGTCT"
         >>> runner.seq_protocol(seq)
-        'GEXSCOPE-V1'
+        'flv_rna'
         >>> seq = "NCAGATTC" + "TCGGTGACAGCCATAT" + "GTACGCAA" + "CGTAGTCAGAAGCTGA" + "CTGAGCCA"  + "TCCGAAGCC"
         >>> runner.seq_protocol(seq)
         'GEXSCOPE-V1'
@@ -302,6 +303,9 @@ class AutoRNA(Auto):
 
         for protocol in ["GEXSCOPE-V2", "GEXSCOPE-V1", "AccuraCode"]:
             if self.is_protocol(seq, protocol):
+                if protocol == "GEXSCOPE-V1":
+                    if seq[self.protocol_dict['flv_rna']['pattern_dict']['L'][2]] == 'CTGTCT':
+                        return 'flv_rna'
                 return protocol
 
         # check if it is MicroBead

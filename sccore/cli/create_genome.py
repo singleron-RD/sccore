@@ -4,7 +4,7 @@ subset given chromsome from fasta and gtf
 """
 
 import argparse
-import pyfastx
+import pysam
 import os
 
 
@@ -21,13 +21,14 @@ def main():
     chrom = args.chrom.split(",")
     prefix = ".".join([args.species] + chrom)
     chrom = set(chrom)
-    fa = pyfastx.Fastx(args.fasta)
+    fa = pysam.FastxFile(args.fasta)
     outdir = prefix
     if not os.path.exists(outdir):
         os.mkdir(outdir)
     out_fa = os.path.join(outdir, prefix + ".fasta")
     with open(out_fa, "w") as out:
-        for name, seq in fa:
+        for entry in fa:
+            name, seq = entry.name, entry.sequence
             if name in chrom:
                 out.write(">{}\n{}\n".format(name, seq))
 
