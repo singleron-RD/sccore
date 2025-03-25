@@ -1,78 +1,38 @@
 """
-Convert celescope V1.* BAM to fastq file
+Do not use this script. It does not handle multi-map reads. Use `samtools fastq` instead.
 """
 
-import pysam
+import argparse
 import gzip
-import os
 
-LINKER1 = "ATCCACGTGCTTGAGA"
-LINKER2 = "TCAGCATGCGGCTACG"
+import pysam
 
 
-def fastq_str(name, seq, qual):
-    """return fastq read string"""
-    return f"@{name}\n{seq}\n+\n{qual}\n"
-
-
-def seg2fastq(segment: pysam.AlignedSegment, cb_len: int) -> tuple[str, str]:
+def bam_to_fastq(bam_file, output_fastq):
     """
-    C9L16C9L16C9L1U12
+    Convert a single-end BAM file to a gzipped FASTQ file using pysam.
+
+    Args:
+        bam_file (str): Path to the input BAM file.
+        output_fastq (str): Path for the output gzipped FASTQ file.
     """
-    query_name = segment.query_name
-    attr = query_name.split("_")
+    with pysam.AlignmentFile(bam_file, "rb") as bam, gzip.open(output_fastq, "wt") as fq:
+        for read in bam:
+            fastq_entry = (
+                f"@{read.query_name}\n{read.query_sequence}\n+\n{''.join(chr(q + 33) for q in read.query_qualities)}\n"
+            )
+            fq.write(fastq_entry)
 
-    cb, umi = attr[0], attr[1]
-    cbs = [cb[i : i + cb_len] for i in range(0, len(cb), cb_len)]
-    r1_seq = "".join([cbs[0], LINKER1, cbs[1], LINKER2, cbs[2], "C", umi, "T" * 18])
-    r1_qual = "F" * len(r1_seq)
-    r1 = fastq_str(query_name, r1_seq, r1_qual)
-
-    r2_seq = segment.get_forward_sequence()
-    r2_qual = "".join(map(lambda x: chr(x + 33), segment.get_forward_qualities()))
-    r2 = fastq_str(query_name, r2_seq, r2_qual)
-    return r1, r2
-
-
-def get_cb_len(bam_file):
-    with pysam.AlignmentFile(bam_file, "rb") as f:
-        for segment in f:
-            attr = segment.query_name.split("_")
-            if len(attr) != 3:
-                raise ValueError(
-                    f"Currently only support celescope V1 BAM. {segment.query_name} is not a valid query name"
-                )
-            cb = attr[0]
-            if len(cb) not in (24, 27):
-                raise ValueError(f"{cb} not a valid cb")
-            return len(cb) // 3
+    print(f"Conversion completed: {output_fastq}")
 
 
 def main():
-    import argparse
-
-    parser = argparse.ArgumentParser()
-    parser.add_argument("-b", "--bam", required=True)
-    parser.add_argument("-s", "--sample")
-    parser.add_argument("-o", "--outdir", default="./")
+    parser = argparse.ArgumentParser(description="Convert single-end BAM to gzipped FASTQ using pysam.")
+    parser.add_argument("bam_file", help="Input single-end BAM file")
+    parser.add_argument("output_fastq", help="Output gzipped FASTQ file")
     args = parser.parse_args()
 
-    sample = args.sample if args.sample else os.path.basename(args.bam).split("_")[0]
-    cb_len = get_cb_len(args.bam)
-    f1_fn = f"{args.outdir}/{sample}_R1.fastq.gz"
-    f2_fn = f"{args.outdir}/{sample}_R2.fastq.gz"
-    n = 0
-    mod = 1000000
-    with pysam.AlignmentFile(args.bam, "rb") as f:
-        with gzip.open(f1_fn, "wt") as f1, gzip.open(f2_fn, "wt") as f2:
-            print("writing fastq...")
-            for segment in f:
-                r1, r2 = seg2fastq(segment, cb_len)
-                f1.write(r1)
-                f2.write(r2)
-                n += 1
-                if n % mod == 0:
-                    print(f"{n//mod}M reads processed")
+    bam_to_fastq(args.bam_file, args.output_fastq)
 
 
 if __name__ == "__main__":

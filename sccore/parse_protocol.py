@@ -183,7 +183,7 @@ class Auto:
         protocol = self.get_protocol()
         return protocol, self.protocol_dict[protocol]
 
-    def get_protocol(self):
+    def get_protocol(self) -> str:
         """check protocol in the fq1_list"""
         fq_protocol = {}
         for fastq1 in self.fq1_list:

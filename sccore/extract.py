@@ -7,21 +7,25 @@ from sccore import parse_protocol, utils
 
 
 class Extract:
-    def __init__(self, fq1_list, fq2_list, sample: str, protocol_dict, protocol):
+    def __init__(self, fq1_list, fq2_list, sample: str, protocol_dict, protocol, outdir):
+        """
+        extract barcode and UMI from fq1 and add them to the read name of fq2
+        Args:
+            protocol_dict: {"pattern_dict": , "bc":["bc.txt"]}
+        """
         self.fq1_list = fq1_list
         self.fq2_list = fq2_list
         self.sample = sample
         self.protocol = protocol
-        protocol_meta = protocol_dict[protocol]
-        self.pattern_dict = protocol_meta["pattern_dict"]
+        self.pattern_dict = protocol_dict["pattern_dict"]
         self.raw_list, self.mismatch_list = parse_protocol.create_mismatch_origin_dicts_from_whitelists(
-            protocol_meta["bc"], 1
+            protocol_dict["bc"], 1
         )
         # v3
         if protocol == "GEXSCOPE-V3":
             self.offset_runner = parse_protocol.AutoRNA(fq1_list)
         # output
-        self.out_fq = f"{sample}_R2.fq.gz"
+        self.out_fq = f"{outdir}/{sample}_R2.fq.gz"
 
     def get_bc_umi(self, seq):
         """
@@ -34,6 +38,8 @@ class Extract:
             offset = self.offset_runner.v3_offset(seq)
             seq = seq[offset:]
         bc_list = [seq[x] for x in self.pattern_dict["C"]]
+        if self.protocol == "flv":
+            bc_list = [utils.reverse_complement(bc) for bc in bc_list]
         valid, corrected, corrected_seq = parse_protocol.check_seq_mismatch(bc_list, self.raw_list, self.mismatch_list)
         if not valid:
             umi = None
@@ -41,6 +47,7 @@ class Extract:
             umi = seq[self.pattern_dict["U"][0]]
         return valid, corrected, corrected_seq, umi
 
+    @utils.add_log
     def run(self):
         raw_reads = valid_reads = corrected_reads = 0
         with utils.openfile(self.out_fq, "wt") as out_fh:

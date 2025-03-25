@@ -22,14 +22,12 @@
     "bc": ["bc.txt", "bc.txt", "bc.txt"],
     "linker": ["linker1.txt", "linker2.txt", "linker3.txt"]
   },
+  "flv": {
+    "pattern": "U9C8L16C8L16C8",
+    "bc": ["bc.txt", "bc.txt", "bc.txt"]
+  },
   "AccuraCode": {
     "pattern": "C9U12",
     "bc": ["bc.txt"]
-  },
-  "10X-V2": {
-    "pattern": "C16U10"
-  },
-  "10X-V3": {
-    "pattern": "C16U12"
   }
 }

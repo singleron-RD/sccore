@@ -1,4 +1,3 @@
-import subprocess
 import pysam
 import gzip
 import argparse
@@ -16,9 +15,9 @@ def load_barcodes(barcode_file):
     return barcodes
 
 
-def split_bam_by_barcode(input_bam, barcode_file, output_dir):
+def split_bam_by_barcode(input_bam, barcode_file, output_dir, output_format):
     """
-    按照 CB 标签拆分 BAM 文件，只输出 barcode 文件中包含的条形码
+    按照 CB 标签拆分 BAM 文件，并支持 BAM 或 GZIP 压缩的 FASTQ 输出
     """
     # 加载 barcodes
     valid_barcodes = load_barcodes(barcode_file)
@@ -30,7 +29,7 @@ def split_bam_by_barcode(input_bam, barcode_file, output_dir):
     # 打开输入 BAM 文件
     bamfile = pysam.AlignmentFile(input_bam, "rb")
 
-    # 字典用于存储每个 barcode 对应的 BAM 输出文件
+    # 字典用于存储每个 barcode 对应的 BAM/FASTQ 输出文件
     barcode_files = {}
 
     try:
@@ -39,13 +38,20 @@ def split_bam_by_barcode(input_bam, barcode_file, output_dir):
             # 获取 CB 标签
             cb_tag = dict(read.get_tags()).get("CB")
             if cb_tag and cb_tag in valid_barcodes:
-                # 如果该 barcode 尚未创建 BAM 文件，则创建
                 if cb_tag not in barcode_files:
-                    output_bam_path = os.path.join(output_dir, f"{cb_tag}.bam")
-                    barcode_files[cb_tag] = pysam.AlignmentFile(output_bam_path, "wb", header=bamfile.header)
+                    if output_format == "bam":
+                        output_path = os.path.join(output_dir, f"{cb_tag}.bam")
+                        barcode_files[cb_tag] = pysam.AlignmentFile(output_path, "wb", header=bamfile.header)
+                    elif output_format == "fastq":
+                        output_path = os.path.join(output_dir, f"{cb_tag}.fastq.gz")
+                        barcode_files[cb_tag] = gzip.open(output_path, "wt")  # 以文本模式写入 gzip 压缩文件
 
-                # 将该记录写入对应的 BAM 文件
-                barcode_files[cb_tag].write(read)
+                # 写入数据
+                if output_format == "bam":
+                    barcode_files[cb_tag].write(read)
+                elif output_format == "fastq":
+                    fastq_str = f"@{read.query_name}\n{read.query_sequence}\n+\n{''.join(chr(q + 33) for q in read.query_qualities)}\n"
+                    barcode_files[cb_tag].write(fastq_str)
 
     finally:
         for cb_file in barcode_files.values():
@@ -53,31 +59,18 @@ def split_bam_by_barcode(input_bam, barcode_file, output_dir):
         bamfile.close()
 
 
-MAX_OPEN_FILE = 50000
-
-
-def set_ulimit():
-    """
-    尝试在脚本中设置 ulimit -n 的文件描述符限制
-    """
-    try:
-        subprocess.run(f"ulimit -n {MAX_OPEN_FILE}", shell=True, check=True)
-        print(f"File descriptor limit set to {MAX_OPEN_FILE}.")
-    except subprocess.CalledProcessError as e:
-        print(f"Failed to set ulimit: {e}")
-
-
 def main():
     parser = argparse.ArgumentParser(description="Split BAM file by CB tag using a list of barcodes")
     parser.add_argument("-i", "--input", required=True, help="Input BAM file")
     parser.add_argument("-b", "--barcode", required=True, help="Barcode file (gzip compressed, one barcode per line)")
-    parser.add_argument("-o", "--output", required=True, help="Output directory for split BAM files")
+    parser.add_argument("-o", "--output", required=True, help="Output directory for split files")
+    parser.add_argument(
+        "-f", "--format", choices=["bam", "fastq"], default="bam", help="Output format: bam or fastq.gz"
+    )
 
     args = parser.parse_args()
 
-    set_ulimit()
-
-    split_bam_by_barcode(args.input, args.barcode, args.output)
+    split_bam_by_barcode(args.input, args.barcode, args.output, args.format)
 
 
 if __name__ == "__main__":

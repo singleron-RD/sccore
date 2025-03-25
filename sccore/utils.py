@@ -69,6 +69,15 @@ def nested_defaultdict(dim=3, val_type=int):
         return defaultdict(lambda: nested_defaultdict(dim - 1, val_type=val_type))
 
 
+def reverse_complement(dna: str) -> str:
+    """Returns the reverse complement of a DNA sequence, allowing 'N' bases.
+    >>> reverse_complement("ATCGNTA")
+    'TANCGAT'
+    """
+    complement = {"A": "T", "T": "A", "C": "G", "G": "C", "N": "N"}
+    return "".join(complement.get(base, "N") for base in reversed(dna))
+
+
 def add_log(func):
     """
     logging start and done.
