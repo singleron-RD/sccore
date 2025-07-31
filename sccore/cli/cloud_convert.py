@@ -4,37 +4,43 @@ import glob
 
 
 def extract_tar_files(dir):
-    # 在路径目录下查找符合 "_EmptyDrops_CR_matrix_10X.tar" 的文件
-    tar_files = glob.glob(os.path.join(dir, "call-starsolo/execution/*_EmptyDrops_CR_matrix_10X.tar"))
-
+    # 递归查找所有 *_EmptyDrops_CR_matrix_10X.tar 文件
+    tar_files = glob.glob(os.path.join(dir, "**", "*EmptyDrops_CR_matrix_10X.tar"), recursive=True)
     for tar_file in tar_files:
-        # 从文件路径中提取文件名
         filename = os.path.basename(tar_file)
-        # 提取 sample 名称
-        sample = filename.split("_EmptyDrops_CR_matrix_10X.tar")[0]
-        # 构造解压目录路径
+        sample = filename.replace("_EmptyDrops_CR_matrix_10X.tar", "")
         extract_path = os.path.join(sample, "outs", "filtered")
-        # 确保解压目录存在
         os.makedirs(extract_path, exist_ok=True)
 
-        # 解压 tar 文件
         with tarfile.open(tar_file, "r") as tar:
             tar.extractall(path=extract_path)
         print(f"Extracted {filename} to {extract_path}")
 
 
 def copy_analysis_files(dir):
-    tsne_file = glob.glob(os.path.join(dir, "call-analysis/execution/*_EmptyDrops_CR_tsne_coord.tsv"))[0]
-    markers_file = glob.glob(os.path.join(dir, "call-analysis/execution/*_EmptyDrops_CR_markers.tsv"))[0]
-    sample = (os.path.basename(tsne_file)).split("_EmptyDrops_CR_tsne_coord.tsv")[0]
+    # 递归查找 tsne 和 markers 文件
+    tsne_files = glob.glob(os.path.join(dir, "**", "*_EmptyDrops_CR_tsne_coord.tsv"), recursive=True)
+    markers_files = glob.glob(os.path.join(dir, "**", "*_EmptyDrops_CR_markers.tsv"), recursive=True)
 
-    outdir = os.path.join(sample, "outs")
-    os.makedirs(outdir, exist_ok=True)
+    # 构建字典：sample -> {tsne, markers}
+    sample_files = {}
+    for tsne in tsne_files:
+        sample = os.path.basename(tsne).split("_EmptyDrops_CR_tsne_coord.tsv")[0]
+        sample_files.setdefault(sample, {})["tsne"] = tsne
 
-    # copy to outdir
-    os.system(f"cp {tsne_file} {outdir}/tsne_coord.tsv")
-    os.system(f"cp {markers_file} {outdir}/markers.tsv")
-    print(f"Copied analysis files to {outdir}")
+    for markers in markers_files:
+        sample = os.path.basename(markers).split("_EmptyDrops_CR_markers.tsv")[0]
+        sample_files.setdefault(sample, {})["markers"] = markers
+
+    for sample, files in sample_files.items():
+        tsne_file = files.get("tsne")
+        markers_file = files.get("markers")
+        if tsne_file and markers_file:
+            outdir = os.path.join(sample, "outs")
+            os.makedirs(outdir, exist_ok=True)
+            os.system(f"cp {tsne_file} {outdir}/tsne_coord.tsv")
+            os.system(f"cp {markers_file} {outdir}/markers.tsv")
+            print(f"Copied analysis files to {outdir}")
 
 
 def main():
@@ -46,8 +52,17 @@ def main():
 
     with open(args.dir_paths_txt, "r") as f:
         paths = f.read().splitlines()
+
     for path in paths:
         path = path.strip()
+        if os.path.exists(path):
+            print(f"Converting {path}")
+        else:
+            print(f"{path} does not exist, skip")
         if path:
             extract_tar_files(path)
             copy_analysis_files(path)
+
+
+if __name__ == "__main__":
+    main()

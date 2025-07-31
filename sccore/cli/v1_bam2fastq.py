@@ -1,5 +1,5 @@
 """
-Convert celescope V1.* BAM to fastq file
+Convert celescope V2.* BAM to fastq file
 """
 
 import pysam
@@ -40,7 +40,7 @@ def get_cb_len(bam_file):
             attr = segment.query_name.split("_")
             if len(attr) != 3:
                 raise ValueError(
-                    f"Currently only support celescope V1 BAM. {segment.query_name} is not a valid query name"
+                    f"Currently only support celescope V2 BAM. {segment.query_name} is not a valid query name"
                 )
             cb = attr[0]
             if len(cb) not in (24, 27):
