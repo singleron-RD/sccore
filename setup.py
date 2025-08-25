@@ -17,8 +17,8 @@ def parse_requirements(filename):
 entrys = []
 for file in glob.glob("sccore/cli/*.py"):
     name = os.path.basename(file)[:-3]
-    cli = name.replace("_", "-")
-    entrys.append(f"{cli}=sccore.cli.{name}:main")
+    name = name.replace("-", "_")
+    entrys.append(f"{name}=sccore.cli.{name}:main")
 entry_dict = {
     "console_scripts": entrys,
 }

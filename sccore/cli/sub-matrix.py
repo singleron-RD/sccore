@@ -2,12 +2,11 @@
 
 import argparse
 import gzip
-import json
 import random
-import statistics
 from collections import defaultdict
 
 import pysam
+import pandas as pd
 
 
 def openfile(file_name, mode="rt", **kwargs):
@@ -25,20 +24,22 @@ def read_one_col(fn):
         return [x.strip() for x in f]
 
 
-def get_records(bam_file):
+def get_records(bam_file, barcodes):
     a = []
-    cb_int = {}
-    ub_int = {}
-    gx_int = {}
-    n_cb = n_ub = n_gx = n_read = 0
+    n_read = 0
     dup_align_read_names = set()
     with pysam.AlignmentFile(bam_file) as bam:
         for record in bam:
+            n_read += 1
+            if n_read % 1000000 == 0:
+                print(f"processed {n_read} reads")
             cb = record.get_tag("CB")
             ub = record.get_tag("UB")
             try:
                 gx = record.get_tag("GX")
             except Exception:
+                continue
+            if cb not in barcodes:
                 continue
             if all(x != "-" for x in (cb, ub, gx)):
                 if record.get_tag("NH") > 1:
@@ -47,71 +48,43 @@ def get_records(bam_file):
                     else:
                         dup_align_read_names.add(record.query_name)
                 # use int instead of str to avoid memory hog
-                if cb not in cb_int:
-                    n_cb += 1
-                    cb_int[cb] = n_cb
-                if ub not in ub_int:
-                    n_ub += 1
-                    ub_int[ub] = n_ub
-                if gx not in gx_int:
-                    n_gx += 1
-                    gx_int[gx] = n_gx
-                a.append((cb_int[cb], ub_int[ub], gx_int[gx]))
-                n_read += 1
-    return a, cb_int
+                a.append((cb, ub, gx))
+    return a
 
 
-def sub_saturation(a):
-    """get saturation and median gene"""
-    n = len(a)
-    fraction_saturation = {0.0: 0.0}
-    for fraction in range(1, 11):
-        fraction /= 10.0
-        nread = int(n * fraction)
-        uniq = len(set(a[:nread]))
-        saturation = 1 - float(uniq) / nread
-        saturation = round(saturation * 100, 2)
-        fraction_saturation[fraction] = saturation
-    return fraction_saturation
+def sub_matrix(reads):
+    subsamples = [1.0, 0.5, 0.1]
+    n_reads = len(reads)
+    expr_data = defaultdict(lambda: defaultdict(int))
 
+    for frac in subsamples:
+        # Step 1: 直接取前 frac 部分 reads
+        cutoff = int(n_reads * frac)
+        sampled_reads = reads[:cutoff]
 
-def sub_gene(a, barcodes):
-    """get median gene for each fraction"""
-    nread_fraction = {}
-    n = len(a)
-    for fraction in range(11):
-        fraction /= 10.0
-        nread = int(n * fraction)
-        nread_fraction[nread] = fraction
+        # Step 2: UMI 去重
+        umi_sets = defaultdict(set)  # key: (barcode, gene), value: set of UMIs
+        for barcode, umi, gene in sampled_reads:
+            umi_sets[(barcode, gene)].add(umi)
 
-    fraction_mg = {0.0: 0}
-    cb_gx = defaultdict(set)
-    for i, (cb, _, gx) in enumerate(a, start=1):
-        if cb in barcodes:
-            cb_gx[cb].add(gx)
-        if i in nread_fraction:
-            fraction = nread_fraction[i]
-            fraction_mg[fraction] = int(statistics.median([len(x) for x in cb_gx.values()]))
-    return fraction_mg
+        # Step 3: 统计表达量
+        for (barcode, gene), umi_set in umi_sets.items():
+            expr_data[gene][f"{barcode}_sub{frac}"] = len(umi_set)
+
+    # 转换成 DataFrame
+    expr_matrix = pd.DataFrame.from_dict(expr_data, orient="index").fillna(0).astype(int)
+    expr_matrix = expr_matrix.reindex(sorted(expr_matrix.columns), axis=1)
+    return expr_matrix
 
 
 def main(args):
-    """main function"""
-    a, cb_dict = get_records(args.bam)
-    barcodes = read_one_col(args.cell_barcode)
-    barcodes = set(cb_dict[x] for x in barcodes)
+    barcodes = set(read_one_col(args.cell_barcode))
+    a = get_records(args.bam, barcodes)
     random.seed(0)
     random.shuffle(a)
 
-    fraction_saturation = sub_saturation(a)
-    fraction_mg = sub_gene(a, barcodes)
-    saturation_file = f"{args.sample}.scrna.saturation.json"
-    median_gene_file = f"{args.sample}.scrna.median_gene.json"
-    # write json
-    with open(saturation_file, "w") as f:
-        f.write(json.dumps(fraction_saturation))
-    with open(median_gene_file, "w") as f:
-        f.write(json.dumps(fraction_mg))
+    expr_matrix = sub_matrix(a)
+    expr_matrix.to_csv(f"{args.sample}_sub_matrix.tsv", sep="\t")
 
 
 if __name__ == "__main__":
