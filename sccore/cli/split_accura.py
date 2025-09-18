@@ -189,7 +189,9 @@ class SplitDNA:
                             out_handles_r1[name] = utils.generic_open(r1_file, "wt", compresslevel=1)
                             out_handles_r2[name] = utils.generic_open(r2_file, "wt", compresslevel=1)
 
-                        out_handles_r1[name].write(utils.fastq_str(read1.name, read1.sequence[BC_LEN:], read1.quality))
+                        out_handles_r1[name].write(
+                            utils.fastq_str(read1.name, read1.sequence[BC_LEN:], read1.quality[BC_LEN:])
+                        )
                         out_handles_r2[name].write(utils.fastq_str(read2.name, read2.sequence, read2.quality))
 
         # output metrics
