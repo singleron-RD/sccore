@@ -7,6 +7,7 @@ import csv
 from collections import defaultdict, OrderedDict
 from datetime import timedelta
 from functools import wraps
+from pathlib import Path
 
 import pandas as pd
 
@@ -86,9 +87,7 @@ def add_log(func):
     """
     log_formatter = logging.Formatter("%(asctime)s - %(name)s - %(levelname)s - %(message)s")
 
-    module = func.__module__
-    name = func.__name__
-    logger_name = f"{module}.{name}"
+    logger_name = f"{func.__module__}.{func.__qualname__}"
     logger = logging.getLogger(logger_name)
     logger.setLevel(logging.INFO)
 
@@ -110,7 +109,7 @@ def add_log(func):
     return wrapper
 
 
-def one_col_to_list(file) -> list:
+def one_col_to_list(file) -> list[str]:
     """
     Read file with one column. Strip each line.
     Returns col_list
@@ -127,4 +126,15 @@ def two_col_to_dict(file):
     """
     df = pd.read_csv(file, header=None, sep="\t")
     df = df.dropna()
+    if df.shape[1] < 2:
+        raise ValueError(f"File {file} has less than two columns.")
     return OrderedDict(zip(df[0], df[1]))
+
+
+def generic_open(file_name: str | Path, *args, **kwargs):
+    fp = Path(file_name)
+    if fp.suffix == ".gz":
+        file_obj = gzip.open(file_name, *args, **kwargs)
+    else:
+        file_obj = open(file_name, *args, **kwargs)
+    return file_obj

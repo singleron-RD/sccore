@@ -40,6 +40,9 @@ def create_mismatch_seqs(seq: str, max_mismatch=1, allowed_bases="ACGTN") -> set
     >>> seq_set = create_mismatch_seqs("ACG")
     >>> seq_set == answer
     True
+    >>> seq_set = create_mismatch_seqs("ACG", max_mismatch=0)
+    >>> seq_set == set(["ACG"])
+    True
     """
     if max_mismatch < 0:
         raise ValueError("max_mismatch must be non-negative")
@@ -47,9 +50,10 @@ def create_mismatch_seqs(seq: str, max_mismatch=1, allowed_bases="ACGTN") -> set
         raise ValueError(f"max_mismatch ({max_mismatch}) cannot be greater than the sequence length ({len(seq)})")
 
     result = set()
-    for locs in itertools.combinations(range(len(seq)), max_mismatch):
-        seq_locs = [list(allowed_bases) if i in locs else [base] for i, base in enumerate(seq)]
-        result.update("".join(p) for p in itertools.product(*seq_locs))
+    for n_mismatch in range(max_mismatch + 1):  # 包括0到max_mismatch
+        for locs in itertools.combinations(range(len(seq)), n_mismatch):
+            seq_locs = [list(allowed_bases) if i in locs else [base] for i, base in enumerate(seq)]
+            result.update("".join(p) for p in itertools.product(*seq_locs))
     return result
 
 
@@ -89,7 +93,7 @@ def create_mismatch_origin_dicts_from_whitelists(whitelists: list, n_mismatch: i
     return raw_list, mismatch_list
 
 
-def check_seq_mismatch(seq_list, raw_list, mismatch_list):
+def check_seq_mismatch(seq_list, raw_list, mismatch_list) -> tuple[bool, bool, str]:
     """
     Returns
         valid: True if seq in mismatch_list or mismatch_list is empty
@@ -403,9 +407,11 @@ class AutoAccuraRNA(Auto):
         """
         Returns: chemistry or None
         """
-        for chemistry in ["AccuraSCOPE_RNA_3p", "AccuraSCOPE_RNA_5p"]:
-            if self.is_chemistry(seq, chemistry):
-                return chemistry
+        if seq[:9] in self.p3_linker_mismatch_dict and self.is_chemistry(seq, "AccuraSCOPE_RNA_3p"):
+            return "AccuraSCOPE_RNA_3p"
+        if self.is_chemistry(seq, "AccuraSCOPE_RNA_5p"):
+            return "AccuraSCOPE_RNA_5p"
+        return None
 
 
 @utils.add_log
@@ -424,7 +430,7 @@ def get_chemistry(assay: str, args_chemistry: str, fq1_list: list) -> str:
 
 
 @utils.add_log
-def get_pattern_dict_and_bc(chemistry, pattern: str = "", whitelist: str = "") -> tuple[dict, list]:
+def get_pattern_dict_and_bc(chemistry, pattern: str = "", whitelist: str = "") -> tuple[dict, list[str]]:
     if chemistry != "customized":
         chemistry_dict = get_chemistry_dict()
         pattern_dict = chemistry_dict[chemistry]["pattern_dict"]
@@ -433,6 +439,32 @@ def get_pattern_dict_and_bc(chemistry, pattern: str = "", whitelist: str = "") -
         pattern_dict = parse_pattern(pattern)
         bc = whitelist.split(" ")
     return pattern_dict, bc
+
+
+class BcUmi:
+    def __init__(self, chemistry, pattern="", whitelist="", strict=False):
+        self.chemistry = chemistry
+        self.pattern_dict, self.bc = get_pattern_dict_and_bc(self.chemistry, pattern, whitelist)
+        self.raw_list, self.mismatch_list = create_mismatch_origin_dicts_from_whitelists(self.bc, 0 if strict else 1)
+        # v3
+        self.offset_runner = AutoRNA([])
+
+    def get_bc_umi(self, seq) -> tuple[bool, bool, str, str]:
+        if self.chemistry == "GEXSCOPE-V3":
+            offset = self.offset_runner.v3_offset(seq)
+            seq = seq[offset:]
+        elif self.chemistry == "flv_rna-V2":
+            offset = self.offset_runner.flv_rna_v2_offset(seq)
+            seq = seq[offset:]
+        bc_list = [seq[x] for x in self.pattern_dict["C"]]
+        if self.chemistry == "flv":
+            bc_list = [utils.reverse_complement(bc) for bc in bc_list[::-1]]
+        valid, corrected, corrected_seq = check_seq_mismatch(bc_list, self.raw_list, self.mismatch_list)
+        if "U" in self.pattern_dict:
+            umi = seq[self.pattern_dict["U"][0]]
+        else:
+            umi = ""
+        return valid, corrected, corrected_seq, umi
 
 
 def invalid_debug(chemistry, fq1_list, output_file, max_read=10000):
@@ -506,29 +538,3 @@ def add_color_in_html(seq, items, color="black", background_color="white"):
             f'<span style="color:{color};background-color:{background_color};">{item}</span>',
         )
     return seq
-
-
-class BcUmi:
-    def __init__(self, chemistry, pattern="", whitelist=""):
-        self.chemistry = chemistry
-        self.pattern_dict, self.bc = get_pattern_dict_and_bc(self.chemistry, pattern, whitelist)
-        self.raw_list, self.mismatch_list = create_mismatch_origin_dicts_from_whitelists(self.bc, 1)
-        # v3
-        self.offset_runner = AutoRNA([])
-
-    def get_bc_umi(self, seq):
-        if self.chemistry == "GEXSCOPE-V3":
-            offset = self.offset_runner.v3_offset(seq)
-            seq = seq[offset:]
-        elif self.chemistry == "flv_rna-V2":
-            offset = self.offset_runner.flv_rna_v2_offset(seq)
-            seq = seq[offset:]
-        bc_list = [seq[x] for x in self.pattern_dict["C"]]
-        if self.chemistry == "flv":
-            bc_list = [utils.reverse_complement(bc) for bc in bc_list[::-1]]
-        valid, corrected, corrected_seq = check_seq_mismatch(bc_list, self.raw_list, self.mismatch_list)
-        if not valid:
-            umi = None
-        else:
-            umi = seq[self.pattern_dict["U"][0]]
-        return valid, corrected, corrected_seq, umi
