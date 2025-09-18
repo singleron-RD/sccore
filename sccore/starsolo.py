@@ -1,11 +1,11 @@
-from sccore import parse_protocol, matrix, utils
+from sccore import parse_chemistry, matrix, utils
 import pandas as pd
 from typing import Union
 
 
 def create_pattern_args(pattern: str) -> str:
     """Create starsolo args relate to pattern"""
-    pattern_dict = parse_protocol.parse_pattern(pattern)
+    pattern_dict = parse_chemistry.parse_pattern(pattern)
     if len(pattern_dict["U"]) != 1:
         raise ValueError(
             f"Error: Wrong pattern:{pattern}. \n Solution: fix pattern so that UMI only have 1 position.\n"

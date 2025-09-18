@@ -3,7 +3,7 @@
 import argparse
 import pyfastx
 import pysam
-from sccore import parse_protocol, utils
+from sccore import parse_chemistry, utils
 
 
 def main():
@@ -40,9 +40,9 @@ def main():
                     break
 
     elif args.fq1:
-        protocol_dict = parse_protocol.get_protocol_dict(args.assets_dir)
-        v2_dict = protocol_dict["GEXSCOPE-V2"]
-        v2_raw, v2_mismatch = parse_protocol.create_mismatch_origin_dicts_from_whitelists(v2_dict["bc"], 1)
+        chemistry_dict = parse_chemistry.get_chemistry_dict(args.assets_dir)
+        v2_dict = chemistry_dict["GEXSCOPE-V2"]
+        v2_raw, v2_mismatch = parse_chemistry.create_mismatch_origin_dicts_from_whitelists(v2_dict["bc"], 1)
 
         invalid_fastq = open("invalid.fastq", "wt")
         fq1 = pyfastx.Fastx(args.fq1)
@@ -50,7 +50,7 @@ def main():
         for name1, seq1, qual1 in fq1:
             raw += 1
             bc_list = [seq1[x] for x in v2_dict["pattern_dict"]["C"]]
-            valid, _corrected, res = parse_protocol.check_seq_mismatch(bc_list, v2_raw, v2_mismatch)
+            valid, _corrected, res = parse_chemistry.check_seq_mismatch(bc_list, v2_raw, v2_mismatch)
             if not valid:
                 invalid_fastq.write(utils.fastq_str(name1, seq1, qual1))
                 invalid_reads += 1

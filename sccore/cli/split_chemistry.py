@@ -3,7 +3,7 @@ import gzip
 from collections import defaultdict
 
 import pysam
-from celescope.tools import parse_chemistry, utils
+from sccore import parse_chemistry, utils
 
 CHEMISTRYS = ["GEXSCOPE-V2", "bulk_rna-bulk_vdj_match"]
 BULK_LINKER = "GTGGTATCAACGCAGAGT"

@@ -4,9 +4,11 @@ import logging
 import sys
 import time
 import csv
-from collections import defaultdict
+from collections import defaultdict, OrderedDict
 from datetime import timedelta
 from functools import wraps
+
+import pandas as pd
 
 
 def openfile(file_name, mode="rt", **kwargs):
@@ -106,3 +108,23 @@ def add_log(func):
 
     wrapper.logger = logger
     return wrapper
+
+
+def one_col_to_list(file) -> list:
+    """
+    Read file with one column. Strip each line.
+    Returns col_list
+    """
+    df = pd.read_csv(file, header=None)
+    col1 = list(df.iloc[:, 0])
+    return [item.strip() for item in col1]
+
+
+def two_col_to_dict(file):
+    """
+    Read file with two columns.
+    Returns dict
+    """
+    df = pd.read_csv(file, header=None, sep="\t")
+    df = df.dropna()
+    return OrderedDict(zip(df[0], df[1]))
