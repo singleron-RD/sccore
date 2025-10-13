@@ -30,9 +30,10 @@ def main():
     parser = argparse.ArgumentParser()
     parser.add_argument("--fq1", required=True)
     parser.add_argument("--fq2", required=True)
+    parser.add_argument("--reads", type=int, default=50000)
     args = parser.parse_args()
 
-    n_reads = 50000
+    n_reads = args.reads
     fq_dict = {
         "R1": args.fq1,
         "R2": args.fq2,

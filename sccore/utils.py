@@ -8,6 +8,7 @@ from collections import defaultdict, OrderedDict
 from datetime import timedelta
 from functools import wraps
 from pathlib import Path
+from typing import Union
 
 import pandas as pd
 
@@ -131,7 +132,7 @@ def two_col_to_dict(file):
     return OrderedDict(zip(df[0], df[1]))
 
 
-def generic_open(file_name: str | Path, *args, **kwargs):
+def generic_open(file_name: Union[str, Path], *args, **kwargs):
     fp = Path(file_name)
     if fp.suffix == ".gz":
         file_obj = gzip.open(file_name, *args, **kwargs)
