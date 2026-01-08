@@ -6,7 +6,6 @@ import sys
 dir_keywords = [
     ".barcode",
     ".cutadapt",
-    ".star",
     ".featureCounts",
     ".assemble",
     ".convert",
@@ -14,8 +13,9 @@ dir_keywords = [
     ".consensus",
     ".prep_map",
 ]
-file_suffix = [".bam", ".fq"]
-time_threshold_days = 90
+file_suffix = [".bam", ".fq", ".fastq", ".bdg", "150bp.tsv"]
+file_keywords = ["core."]
+time_threshold_days = 60
 time_threshold_seconds = time_threshold_days * 24 * 60 * 60
 
 
@@ -35,11 +35,16 @@ def should_delete_file(file_path):
     if (current_time - file_mtime) < time_threshold_seconds:
         return False
     # Check if file or directory contains any of the keywords
+    """
     for dir_keyword in dir_keywords:
         if dir_keyword in file_path:
             return True
+    """
     for suffix in file_suffix:
         if file_path.endswith(suffix):
+            return True
+    for file_keyword in file_keywords:
+        if file_keyword in os.path.basename(file_path):
             return True
     return False
 
@@ -53,7 +58,7 @@ def delete_files(base_dirs):
                 file_path = os.path.join(root, file)
                 try:
                     if should_delete_file(file_path):
-                        print(f"Deleting: {file_path}")
+                        print(f"Deleting: {file_path}", flush=True)
                         os.remove(file_path)
                 except Exception:
                     pass

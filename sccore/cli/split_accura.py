@@ -71,9 +71,10 @@ class SplitRNA:
                     if not chemistry:
                         continue
                     if chemistry == "AccuraSCOPE_RNA_3p":
-                        valid, _corrected, corrected_seq, _umi = self.p3_bcumi_runner.get_bc_umi(read1.sequence)
+                        valid, _corrected, corrected_seq, umi = self.p3_bcumi_runner.get_bc_umi(read1.sequence)
                     else:
                         valid, _corrected, corrected_seq, _umi = self.p5_bcumi_runner.get_bc_umi(read1.sequence)
+                        umi = "A" * 12  # placeholder UMI for 5' reads
                     if not valid:
                         continue
                     barcode = corrected_seq
@@ -99,8 +100,8 @@ class SplitRNA:
                                 }
                             )
                             out_handles[name] = utils.generic_open(out_file, "wt", compresslevel=1)
-
-                        out_handles[name].write(utils.fastq_str(read2.name, read2.sequence, read2.quality))
+                        read_name = f"{chemistry}_{total_reads}:{umi}"
+                        out_handles[name].write(utils.fastq_str(read_name, read2.sequence, read2.quality))
 
         # output metrics
         metrics_file = self.outdir / "rna_metrics.txt"
