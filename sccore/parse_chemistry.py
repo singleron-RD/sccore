@@ -503,7 +503,7 @@ def invalid_debug(chemistry, fq1_list, output_file, max_read=10000):
         html_sequences.append(f"{n_invalid}--{read.name}")
         html_sequences.append(seq)
 
-    MAX_SEQ = 100
+    MAX_SEQ = 1000
     joined_sequences = "<br>".join(html_sequences[: MAX_SEQ * 2])
 
     html_content = f"""

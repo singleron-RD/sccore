@@ -55,21 +55,32 @@ def get_metrics_dict(mtx_path, doublet_threshold):
 
 def main():
     parser = argparse.ArgumentParser()
-    parser.add_argument("-c", "--celescope_dir", type=str, required=True)
-    parser.add_argument("--doublet_threshold", type=float, default=25.0)
+    parser.add_argument("-c", "--celescope_dir", type=str, help="comma separated celescope output dirs")
+    parser.add_argument(
+        "-m",
+        "--mtx_path",
+        type=str,
+        help="path to filtered matrix dir. Multiple dirs can be provided, separated by comma",
+    )
+    parser.add_argument("--doublet_threshold", type=float, default=25.0, help="threshold to define doublet cells")
     parser.add_argument("--out_prefix", type=str, default="human_mouse")
     args = parser.parse_args()
+    if not args.celescope_dir and not args.mtx_path:
+        parser.error("At least one of --celescope_dir or --mtx_path must be provided.")
 
     cur_dir = os.getcwd()
     dfs = []
-    for d in args.celescope_dir.split(","):
-        os.chdir(d)
-        print(f"checking path: {d}\n")
-        paths = glob.glob("*/*/filtered")
-        for path in paths:
-            sample = path.split("/")[0]
-            dict = get_metrics_dict(path, args.doublet_threshold)
-            dfs.append(pd.DataFrame.from_dict(dict, orient="index", columns=[sample]))
+    matrix_path = set()
+    if args.mtx_path:
+        matrix_path.update(args.mtx_path.split(","))
+    if args.celescope_dir:
+        for d in args.celescope_dir.split(","):
+            paths = glob.glob(os.path.join(d, "*/*/filtered"))
+            matrix_path.update(paths)
+    for path in matrix_path:
+        sample = path.split("/")[-3]
+        dict = get_metrics_dict(path, args.doublet_threshold)
+        dfs.append(pd.DataFrame.from_dict(dict, orient="index", columns=[sample]))
 
     df = functools.reduce(lambda left, right: pd.merge(left, right, left_index=True, right_index=True), dfs)
     df = df.T
