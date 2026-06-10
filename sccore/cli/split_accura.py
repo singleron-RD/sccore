@@ -37,10 +37,10 @@ class SplitRNA:
     def __init__(self, args):
         self.fq1 = args.fq1.split(",")
         self.fq2 = args.fq2.split(",")
-        self.p3_bcumi_runner = parse_chemistry.BcUmi("AccuraSCOPE_RNA_3p")
-        self.p5_bcumi_runner = parse_chemistry.BcUmi("AccuraSCOPE_RNA_5p", strict=True)
-        _pattern_dict, p3_bc_file = parse_chemistry.get_pattern_dict_and_bc("AccuraSCOPE_RNA_3p")
-        _pattern_dict, p5_bc_file = parse_chemistry.get_pattern_dict_and_bc("AccuraSCOPE_RNA_5p")
+        self.p3_bcumi_runner = parse_chemistry.BcUmi(f"{args.chemistry}_3p")
+        self.p5_bcumi_runner = parse_chemistry.BcUmi(f"{args.chemistry}_5p", strict=True)
+        _pattern_dict, p3_bc_file = parse_chemistry.get_pattern_dict_and_bc(f"{args.chemistry}_3p")
+        _pattern_dict, p5_bc_file = parse_chemistry.get_pattern_dict_and_bc(f"{args.chemistry}_5p")
         self.p3_barcode_name = get_barcode_name(p3_bc_file[0], args.well_name)
         self.p5_barcode_name = get_barcode_name(p5_bc_file[0], args.well_name)
         self.auto_runner = parse_chemistry.AutoAccuraRNA(self.fq1)
@@ -251,6 +251,12 @@ def main():
         required=True,
         choices=["rna", "dna"],
         help="Library type, rna or dna",
+    )
+    parser.add_argument(
+        "--chemistry",
+        help="Chemistry type, only needed for rna",
+        default="AccuraSCOPE_RNA",
+        choices=["AccuraSCOPE_RNA", "ARC_RNA"],
     )
     args = parser.parse_args()
     if args.library_type == "rna":

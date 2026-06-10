@@ -1,9 +1,9 @@
 #!/usr/bin/env python3
+import argparse
 import os
 import subprocess
 import concurrent.futures
 import shutil
-import sys
 
 
 def find_samples(root_dir):
@@ -15,7 +15,7 @@ def find_samples(root_dir):
     return samples
 
 
-def run_cells(sample_dir):
+def run_cells(sample_dir, solo_cell_filter):
     """为单个样本运行 celescope rna cells"""
 
     sample_name = os.path.basename(sample_dir.rstrip("/"))
@@ -31,7 +31,7 @@ def run_cells(sample_dir):
         "rna",
         "cells",
         "--soloCellFilter",
-        "EmptyDrops_CR 3000 0.99 10 45000 90000 1000 0.01 20000 0.001 10000",
+        solo_cell_filter,
         "--outdir",
         f"{sample_name}/cells",
         "--sample",
@@ -53,12 +53,16 @@ def run_cells(sample_dir):
 
 
 def main():
-    if len(sys.argv) < 2:
-        print(f"Usage: python {sys.argv[0]} ROOT_DIR")
-        sys.exit(1)
+    parser = argparse.ArgumentParser(description="Run celescope rna cells for multiple samples")
+    parser.add_argument("root_dir", help="Root directory to search for samples")
+    parser.add_argument(
+        "--soloCellFilter",
+        default="EmptyDrops_CR 3000 0.99 10 45000 90000 1000 0.01 20000 0.001 10000",
+        help="soloCellFilter parameter for celescope rna cells (default: %(default)s)",
+    )
+    args = parser.parse_args()
 
-    root_dir = sys.argv[1]
-    samples = find_samples(root_dir)
+    samples = find_samples(args.root_dir)
 
     if not samples:
         print("No samples found")
@@ -69,7 +73,7 @@ def main():
         print(f"  - {os.path.basename(sample)}")
 
     with concurrent.futures.ProcessPoolExecutor() as executor:
-        futures = [executor.submit(run_cells, sample) for sample in samples]
+        futures = [executor.submit(run_cells, sample, args.soloCellFilter) for sample in samples]
 
         for future in concurrent.futures.as_completed(futures):
             sample_name, status = future.result()

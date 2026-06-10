@@ -78,6 +78,14 @@ chemistry_dict = {
         "pattern": "C8",
         "bc": ["bc.txt"],
     },
+    "ARC_RNA_3p": {
+        "pattern": "L9C9U12",
+        "bc": ["bc.txt"],
+    },
+    "ARC_RNA_5p": {
+        "pattern": "C6",
+        "bc": ["bc.txt"],
+    },
 }
 
 chemistry_dir = str(resources.files("sccore.chemistry"))
